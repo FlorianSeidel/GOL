@@ -1,4 +1,5 @@
 Release notes GOL v0.1
 
 Known issues:
-- The segmentation threshold has to be set to 0.15 to get similar results as reported in the pROST paper. The reason is that the error images is scaled differently as in the CUDA/C++ implementation. 
+- The segmentation threshold has to be set to 0.15 to get similar results as reported in the pROST paper.
+  The reason is that the error images is scaled differently as in the CUDA/C++ implementation.
