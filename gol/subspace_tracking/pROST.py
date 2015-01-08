@@ -33,37 +33,55 @@ from gol.optimization.GrassmanGD import GrassmanGD
 
 
 class pROST:
-    def __init__(self, n, k, p, mu,t,phi,y_iters=5,U_init=None,step_size_func=lambda x: 1.0/x,median_filter_radius=3):
+    def __init__(self, n, # input dimension
+                 k, # subspace rank
+                 p, # p for pseudo-norm
+                 mu,# Smoothing
+                 t,# Step size
+                 phi,# This is the foreground weighting factor.
+                 y_iters=5,U_init=None,step_size_func=lambda iter: 1.0/iter,median_filter_radius=3):
         self.n = n
         self.k = k
         self.p = p
         self.mu = mu
         self.y_iters=y_iters
+
         self.phi = theano.shared(np.float32(phi))
+        # Step size
         self.t = theano.shared(np.float32(t))
         self.image_shape = None
         self.step_size_func=step_size_func
         self.median_filter_radius=median_filter_radius
 
         if U_init==None:
+            # Initialize with random subspace
             U = npr.randn(n, k).astype(np.float32)
             U, _ = npl.qr(U)
         else:
             U = U_init
 
+        # subspace basis
         self.U_sym = T.fmatrix("U")
         self.U_shared = theano.shared(U.astype(np.float32))
 
+        # foreground weights
         self.W_shared = theano.shared(np.ones((n,1), dtype=np.float32))
 
+        # subspace coordinates of current data point
         self.y_sym = T.fmatrix("y")
         self.y_shared = theano.shared(npr.randn(k,1).astype(np.float32))
 
+        # current image
         self.image_sym = T.fmatrix("image")
         self.image_shared = theano.shared(np.zeros((n,1), dtype=np.float32))
         self.init_y_func = T.dot(self.U_shared.T,self.image_shared)
         self.init_y = theano.function([],[],updates={self.y_shared:self.init_y_func})
-        self.cost = (self.W_shared * ((((self.image_sym - T.dot(self.U_sym, self.y_sym))) ** 2 + self.mu) ** (self.p / 2))).sum()
+
+        # pROST cost function
+        self.cost = (self.W_shared *
+                     #reconstruction error || I - Uy||_(p,mu)
+                     ((((self.image_sym - T.dot(self.U_sym, self.y_sym))) ** 2 + self.mu) ** (self.p / 2))) \
+                     .sum()
         self.reconstruction_func = T.dot(self.U_sym, self.y_sym)
         self.error_image_func = T.abs_(self.image_sym - T.dot(self.U_sym, self.y_sym))
 
@@ -72,12 +90,13 @@ class pROST:
         self.grad_y = theano.grad(self.cost, self.y_sym)
         self.grad_U = theano.grad(self.cost, self.U_sym)
         self.optimize_y = CG(self.y_shared, self.cost, self.grad_y, self.y_sym, self.k, 1, t_init=0.1, rho=0.5,
-                             max_iter_line_search=200,
+                             max_iter_line_search=200, # this is a bit excessive
                              other_givens={self.U_sym: self.U_shared, self.image_sym: self.image_shared})
         self.optimize_U = GrassmanGD(self.U_shared, self.y_shared, self.cost, self.grad_U, self.U_sym,
                                      rho=0.6, max_iter_line_search=5,
                                      other_givens={self.image_sym: self.image_shared, self.y_sym: self.y_shared},
                                      step_size_func=self.step_size_func)
+
         self.recerrsegweight = theano.function([], [self.reconstruction_func, self.error_image_func,self.segmentation_func],
                                                         givens={self.U_sym: self.U_shared, self.y_sym: self.y_shared,
                                                                 self.image_sym: self.image_shared})
@@ -87,19 +106,32 @@ class pROST:
         self.segmentation=None
 
 
+    def calculate_foreground_weights(self):
+
+        self.W_shared.set_value(1.0 - (1.0 - self.phi.get_value()) * cv2.merge(
+            [self.segmentation, self.segmentation, self.segmentation]).reshape((self.n, 1)))
+
+    def calculate_segmentation(self):
+        self.segmentation = self.segmentation.reshape(self.image_shape)
+        self.segmentation = cv2.cvtColor(self.segmentation.astype(np.float32), cv2.COLOR_BGR2GRAY)
+        self.segmentation[self.segmentation > 0] = 1.0
+        self.segmentation = cv2.medianBlur(self.segmentation, self.median_filter_radius)
+
     def process_image(self, image):
         self.image_shape=image.shape
         self.image_shared.set_value(image.reshape(np.prod(self.image_shape),1))
-        self.init_y()
-        self.optimize_y.optimize(self.y_iters)
-        self.reconstruction,self.error_image,self.segmentation = self.recerrsegweight()
-        self.segmentation=self.segmentation.reshape(self.image_shape)
-        gray = cv2.cvtColor(self.segmentation.astype(np.float32), cv2.COLOR_BGR2GRAY)
-        gray[gray>0]=1.0
-        gray = cv2.medianBlur(gray,self.median_filter_radius)
-        self.W_shared.set_value(1.0 - (1.0-self.phi.get_value())*cv2.merge([gray,gray,gray]).reshape((self.n,1)))
 
-        self.segmentation=np.uint8(gray)*255
+        self.init_y()
+
+        self.optimize_y.optimize(self.y_iters)
+
+        self.reconstruction,self.error_image,self.segmentation = self.recerrsegweight()
+
+        self.calculate_segmentation()
+
+        self.calculate_foreground_weights()
+
+        self.segmentation=np.uint8(self.segmentation)*255
 
         self.optimize_U.step()
 
