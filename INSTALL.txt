@@ -29,6 +29,7 @@ device = gpu0
 [nvcc]
 fastmath = True
 
-If you want to try pROST by using the example Program in gol.subspace_tracking.main.py you also have to download the changedetection.net dataset from www.changedetection.net.
+If you want to try pROST by using the example Program in gol.subspace_tracking.main.py you also have to download the
+changedetection.net dataset from www.changedetection.net.
 
 
