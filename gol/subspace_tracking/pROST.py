@@ -33,7 +33,7 @@ from gol.optimization.GrassmanGD import GrassmanGD
 
 
 class pROST:
-    def __init__(self, n, k, p, mu,t,phi,y_iters=5,U_init=None,step_size_func=lambda x: 1.0/x,median_filter_radius=5):
+    def __init__(self, n, k, p, mu,t,phi,y_iters=5,U_init=None,step_size_func=lambda x: 1.0/x,median_filter_radius=3):
         self.n = n
         self.k = k
         self.p = p
