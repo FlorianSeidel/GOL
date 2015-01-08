@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 import numpy as np
+import sys
 from math import log, exp
 
 import cv2
@@ -30,9 +31,8 @@ import gol.subspace_tracking.utilities.preprocessing as pp
 import gol.subspace_tracking.utilities.visualization as viz
 import gol.subspace_tracking.pROST as st
 
-
-sequence = '/media/florian/885AE8AA5AE895EA/changedetection.net/dataset/cameraJitter/traffic'
-
+datapath = sys.argv[1]
+outpath = sys.argv[2]
 
 #vizualizer = viz.Matplotlib_pROST_Visualizer()
 vizualizer = viz.OpenCV_pROST_Visualizer()
@@ -42,15 +42,15 @@ preprocessor = pp.Preprocessor(im_shape,filter_func = lambda x: cv2.GaussianBlur
 
 startStepU=5E-3
 endStepU=1E-4
-stepSizeParam= -log(endStepU/startStepU)/(cdn.get_ROI_start(sequence));
+stepSizeParam= -log(endStepU/startStepU)/(cdn.get_ROI_start(datapath));
 
-pROST = st.pROST(np.prod(im_shape)*3,15,p=0.25,mu=1E-2,t=0.25,phi=5*10E-5,
+pROST = st.pROST(np.prod(im_shape)*3,15,p=0.25,mu=1E-2,t=0.15,phi=5*10E-5,
                  step_size_func=lambda iter: max(exp(-stepSizeParam*iter)*startStepU,endStepU),
                  y_iters=5,
-                 median_filter_radius=5)
+                 median_filter_radius=3)
 
 visualize = True
-for name,image,save_func in cdn.stream_sequence(sequence):
+for name,image,save_func in cdn.stream_sequence(datapath,outpath):
     image_pp = preprocessor.preprocess(image)
 
     pROST.process_image(image_pp)

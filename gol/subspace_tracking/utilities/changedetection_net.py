@@ -20,6 +20,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
+__author__ = 'florian'
+
 
 import cv2
 import os
@@ -83,18 +85,24 @@ def sample_from_beginning_of_sequence(sequence_path, samples):
 def get_ROI_start(sequence_path):
     return read_roi_or_die(sequence_path)[0]
 
-def stream_sequence(sequence_path,from_ROI_start=False):
+def make_outpath(outpath):
+        os.makedirs(outpath)
+
+def stream_sequence(sequence_path,outpath,from_ROI_start=False):
     print "Streaming from sequence: ", sequence_path
     path_exists_or_die(sequence_path)
+    #create output path
+    if not os.path.exists(outpath):
+        make_outpath(outpath)
     #read temporalROI
     start_idx,end_idx = read_roi_or_die(sequence_path)
     if not from_ROI_start:
         start_idx=1
+    end_idx=end_idx+1
     print "Streaming from index ",start_idx," to index ", end_idx
-    output_folder_path = get_output_folder(sequence_path)
+    output_folder_path = outpath
 
     return stream_images(sequence_path,output_folder_path,start_idx,end_idx,lambda i,start_idx,end_idx:i)
-
 
 
 
