@@ -1,4 +1,11 @@
-Release notes GOL v0.1
+
+Release notes GOL v0.1 Alpha 2
+
+Bug-fixes:
+
+- Output of pROST has wrong shape
+
+Release notes GOL v0.1 Alpha 1
 
 Known issues:
 - The segmentation threshold has to be set to 0.15 to get similar results as reported in the pROST paper.

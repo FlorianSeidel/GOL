@@ -31,9 +31,10 @@ class Preprocessor:
         self.idx=0
         self.original=None
         self.convert=convert_bgr2rgb
+	self.shape = None
 
     def preprocess(self, image):
-
+	self.shape=image.shape
         b, g, r = cv2.split(image)
 
         if self.convert:
@@ -59,5 +60,5 @@ class Preprocessor:
         return self.filter_func(img)
 
     def original_size(self):
-        return self.average.shape
+        return self.shape
 
